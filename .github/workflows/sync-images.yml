@@ -32,8 +32,8 @@ jobs:
           yq eval '.images[]' images.yaml -o=json | jq -c . | while read line; do
             name=$(echo $line | jq -r .name)
             tag=$(echo $line | jq -r .tag)
-            aliyun=$(echo $line | jq -r .aliyun // empty)
-            tencent=$(echo $line | jq -r .tencent // empty)
+            aliyun=$(echo $line | jq -r .aliyun // "")
+            tencent=$(echo $line | jq -r .tencent // "")
 
             if [ -n "$name" ] && [ -n "$tag" ]; then
               docker pull $name:$tag
@@ -68,8 +68,8 @@ jobs:
           yq eval '.images[]' images.yaml -o=json | jq -c . | while read line; do
             name=$(echo $line | jq -r .name)
             tag=$(echo $line | jq -r .tag)
-            aliyun=$(echo $line | jq -r .aliyun // empty)
-            tencent=$(echo $line | jq -r .tencent // empty)
+            aliyun=$(echo $line | jq -r .aliyun // "")
+            tencent=$(echo $line | jq -r .tencent // "")
 
             if [ -n "$aliyun" ]; then
               docker push registry.aliyuncs.com/$aliyun
