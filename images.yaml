@@ -1,0 +1,9 @@
+images:
+  - name: nginx
+    tag: latest
+    aliyun: tabll-mirror/nginx
+    tencent: tabll-mirror/nginx
+  - name: redis
+    tag: latest
+    aliyun: tabll-mirror/nginx
+    tencent: tabll-mirror/nginx
