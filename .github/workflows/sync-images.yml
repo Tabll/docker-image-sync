@@ -29,21 +29,25 @@ jobs:
 
       - name: Pull and tag images
         run: |
-          while IFS= read -r line; do
-            name=$(echo $line | yq eval '.name' -)
-            tag=$(echo $line | yq eval '.tag' -)
-            aliyun=$(echo $line | yq eval '.aliyun' -)
-            tencent=$(echo $line | yq eval '.tencent' -)
+          yq eval '.images[]' images.yaml -o=json | jq -c . | while read line; do
+            name=$(echo $line | jq -r .name)
+            tag=$(echo $line | jq -r .tag)
+            aliyun=$(echo $line | jq -r .aliyun // empty)
+            tencent=$(echo $line | jq -r .tencent // empty)
 
-            docker pull $name:$tag
+            if [ -n "$name" ] && [ -n "$tag" ]; then
+              docker pull $name:$tag
 
-            if [ "$aliyun" != "null" ]; then
-              docker tag $name:$tag registry.aliyuncs.com/$aliyun
+              if [ -n "$aliyun" ]; then
+                docker tag $name:$tag registry.aliyuncs.com/$aliyun
+              fi
+              if [ -n "$tencent" ]; then
+                docker tag $name:$tag ccr.ccs.tencentyun.com/$tencent
+              fi
+            else
+              echo "Skipping image $name with tag $tag due to missing data"
             fi
-            if [ "$tencent" != "null" ]; then
-              docker tag $name:$tag ccr.ccs.tencentyun.com/$tencent
-            fi
-          done < <(yq eval '.images[] | tostring' images.yaml)
+          done
 
       - name: Log in to Aliyun Docker Registry
         uses: docker/login-action@v2
@@ -61,16 +65,16 @@ jobs:
 
       - name: Push images to Aliyun and Tencent
         run: |
-          while IFS= read -r line; do
-            name=$(echo $line | yq eval '.name' -)
-            tag=$(echo $line | yq eval '.tag' -)
-            aliyun=$(echo $line | yq eval '.aliyun' -)
-            tencent=$(echo $line | yq eval '.tencent' -)
+          yq eval '.images[]' images.yaml -o=json | jq -c . | while read line; do
+            name=$(echo $line | jq -r .name)
+            tag=$(echo $line | jq -r .tag)
+            aliyun=$(echo $line | jq -r .aliyun // empty)
+            tencent=$(echo $line | jq -r .tencent // empty)
 
-            if [ "$aliyun" != "null" ]; then
+            if [ -n "$aliyun" ]; then
               docker push registry.aliyuncs.com/$aliyun
             fi
-            if [ "$tencent" != "null" ]; then
+            if [ -n "$tencent" ]; then
               docker push ccr.ccs.tencentyun.com/$tencent
             fi
-          done < <(yq eval '.images[] | tostring' images.yaml)
+          done
