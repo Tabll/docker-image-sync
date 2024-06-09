@@ -29,23 +29,14 @@ jobs:
 
       - name: Pull and tag images
         run: |
-          yq eval '.images[]' images.yaml -o=json | jq -c . | while read line; do
-            name=$(echo $line | jq -r .name)
-            tag=$(echo $line | jq -r .tag)
-            aliyun=$(echo $line | jq -r .aliyun // "")
-            tencent=$(echo $line | jq -r .tencent // "")
+          yq eval '.images[] | .name + ":" + .tag + " " + (.aliyun // "") + " " + (.tencent // "")' images.yaml | while read name tag aliyun tencent; do
+            docker pull $name
 
-            if [ -n "$name" ] && [ -n "$tag" ]; then
-              docker pull $name:$tag
-
-              if [ -n "$aliyun" ]; then
-                docker tag $name:$tag registry.aliyuncs.com/$aliyun
-              fi
-              if [ -n "$tencent" ]; then
-                docker tag $name:$tag ccr.ccs.tencentyun.com/$tencent
-              fi
-            else
-              echo "Skipping image $name with tag $tag due to missing data"
+            if [ -n "$aliyun" ]; then
+              docker tag $name registry.aliyuncs.com/$aliyun
+            fi
+            if [ -n "$tencent" ]; then
+              docker tag $name ccr.ccs.tencentyun.com/$tencent
             fi
           done
 
@@ -65,12 +56,7 @@ jobs:
 
       - name: Push images to Aliyun and Tencent
         run: |
-          yq eval '.images[]' images.yaml -o=json | jq -c . | while read line; do
-            name=$(echo $line | jq -r .name)
-            tag=$(echo $line | jq -r .tag)
-            aliyun=$(echo $line | jq -r .aliyun // "")
-            tencent=$(echo $line | jq -r .tencent // "")
-
+          yq eval '.images[] | .name + ":" + .tag + " " + (.aliyun // "") + " " + (.tencent // "")' images.yaml | while read name tag aliyun tencent; do
             if [ -n "$aliyun" ]; then
               docker push registry.aliyuncs.com/$aliyun
             fi
