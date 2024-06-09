@@ -23,20 +23,26 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
-      - name: Read image list
-        id: imagelist
-        run: |
-          images=$(yq eval '.images[] | {name: .name, tag: .tag, aliyun: .aliyun, tencent: .tencent}' images.yaml -o=json)
-          echo "::set-output name=images::$images"
+      - name: Install yq
+        run: sudo snap install yq
 
       - name: Pull and tag images
         run: |
-          images=${{ steps.imagelist.outputs.images }}
-          for img in $images; do
-            docker pull ${img.name}:${img.tag}
-            [[ ! -z "${img.aliyun}" ]] && docker tag ${img.name}:${img.tag} registry.aliyuncs.com/${img.aliyun}
-            [[ ! -z "${img.tencent}" ]] && docker tag ${img.name}:${img.tag} ccr.ccs.tencentyun.com/${img.tencent}
-          done
+          while IFS= read -r line; do
+            name=$(echo $line | yq eval '.name' -)
+            tag=$(echo $line | yq eval '.tag' -)
+            aliyun=$(echo $line | yq eval '.aliyun' -)
+            tencent=$(echo $line | yq eval '.tencent' -)
+
+            docker pull $name:$tag
+
+            if [ "$aliyun" != "null" ]; then
+              docker tag $name:$tag registry.aliyuncs.com/$aliyun
+            fi
+            if [ "$tencent" != "null" ]; then
+              docker tag $name:$tag ccr.ccs.tencentyun.com/$tencent
+            fi
+          done < <(yq eval '.images[] | tostring' images.yaml)
 
       - name: Log in to Aliyun Docker Registry
         uses: docker/login-action@v2
@@ -54,8 +60,16 @@ jobs:
 
       - name: Push images to Aliyun and Tencent
         run: |
-          images=${{ steps.imagelist.outputs.images }}
-          for img in $images; do
-            [[ ! -z "${img.aliyun}" ]] && docker push registry.aliyuncs.com/${img.aliyun}
-            [[ ! -z "${img.tencent}" ]] && docker push ccr.ccs.tencentyun.com/${img.tencent}
-          done
+          while IFS= read -r line; do
+            name=$(echo $line | yq eval '.name' -)
+            tag=$(echo $line | yq eval '.tag' -)
+            aliyun=$(echo $line | yq eval '.aliyun' -)
+            tencent=$(echo $line | yq eval '.tencent' -)
+
+            if [ "$aliyun" != "null" ]; then
+              docker push registry.aliyuncs.com/$aliyun
+            fi
+            if [ "$tencent" != "null" ]; then
+              docker push ccr.ccs.tencentyun.com/$tencent
+            fi
+          done < <(yq eval '.images[] | tostring' images.yaml)
